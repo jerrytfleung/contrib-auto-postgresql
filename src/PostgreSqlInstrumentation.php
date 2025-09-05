@@ -295,10 +295,11 @@ class PostgreSqlInstrumentation
     /** @param non-empty-string $spanName */
     private static function basicPreHook(string $spanName, CachedInstrumentation $instrumentation, PgSqlTracker $tracker, $obj, array $params, ?string $class, ?string $function, ?string $filename, ?int $lineno): array
     {
-        self::startSpan($spanName, $instrumentation, $class, $function, $filename, $lineno, []);
+        $span = self::startSpan($spanName, $instrumentation, $class, $function, $filename, $lineno, []);
         if ($spanName == 'pg_query' || $spanName == 'pg_send_query') {
             $query = mb_convert_encoding($params[1], 'UTF-8');
             $query = self::appendSqlComments($query);
+            $span->setAttribute('db.postgres.query', $query);
             return [
                 1 => $query,
             ];
