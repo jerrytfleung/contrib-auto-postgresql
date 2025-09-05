@@ -171,7 +171,7 @@ class PostgreSqlInstrumentation
             null,
             'pg_send_query',
             pre: static function (...$args) use ($instrumentation, $tracker) {
-                self::basicPreHook('pg_send_query', $instrumentation, $tracker, ...$args);
+                return self::basicPreHook('pg_send_query', $instrumentation, $tracker, ...$args);
             },
             post: static function (...$args) use ($instrumentation, $tracker) {
                 self::sendQueryPostHook($instrumentation, $tracker, ...$args);
@@ -293,9 +293,17 @@ class PostgreSqlInstrumentation
     }
 
     /** @param non-empty-string $spanName */
-    private static function basicPreHook(string $spanName, CachedInstrumentation $instrumentation, PgSqlTracker $tracker, $obj, array $params, ?string $class, ?string $function, ?string $filename, ?int $lineno): void
+    private static function basicPreHook(string $spanName, CachedInstrumentation $instrumentation, PgSqlTracker $tracker, $obj, array $params, ?string $class, ?string $function, ?string $filename, ?int $lineno): array
     {
         self::startSpan($spanName, $instrumentation, $class, $function, $filename, $lineno, []);
+        if ($spanName == 'pg_query' || $spanName == 'pg_send_query') {
+            $query = mb_convert_encoding($params[1], 'UTF-8');
+            $query = self::appendSqlComments($query);
+            return [
+                1 => $query,
+            ];
+        }
+        return [];
     }
 
     private static function tableOperationsPostHook(CachedInstrumentation $instrumentation, PgSqlTracker $tracker, bool $dropIfNoError, ?string $operationName, $obj, array $params, mixed $retVal, ?\Throwable $exception)
@@ -610,6 +618,15 @@ class PostgreSqlInstrumentation
         }
 
         return null;
+    }
+
+    private static function appendSqlComments(string $query): string
+    {
+        $comments = Opentelemetry::getOpentelemetryValues();
+        $query = trim($query);
+        $hasSemicolon = $query[-1] === ';';
+        $query = rtrim($query, ';');
+        return $query . Utils::formatComments(array_filter($comments)) . ($hasSemicolon ? ';' : '');
     }
 
 }

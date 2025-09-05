@@ -1,5 +1,5 @@
 {
-  "name": "open-telemetry/opentelemetry-auto-postgresql",
+  "name": "jerrytfleung/contrib-auto-postgresql",
   "version": "dev-main",
   "description": "OpenTelemetry auto-instrumentation for postgresql",
   "keywords": [
